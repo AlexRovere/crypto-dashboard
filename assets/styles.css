@@ -1,0 +1,19 @@
+
+
+q-toolbar-title,a {
+  text-decoration: none;
+  color: black
+}
+
+.gap-sm {
+  gap: 8px
+}
+
+.gap-md {
+  gap: 16px
+}
+
+h2 {
+  font-size: 1.5rem;
+  margin: 0;
+}
