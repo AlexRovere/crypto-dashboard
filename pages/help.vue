@@ -1,3 +1,0 @@
-<template>
-  AIDEZ MOI
-</template>

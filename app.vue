@@ -4,30 +4,13 @@
 
     <q-header class="bg-white q-pa-md">
       <q-toolbar class="bg-white">
-        <q-toolbar-title class="cursor-pointer" @click="$router.push('/')">
-          <img src="~assets/img/logo-digidrive.webp">
-        </q-toolbar-title>
+        <NuxtLink @click="$router.push('/')">
+          <img src="~assets/img/coingecko.png" width="50">
+        </NuxtLink>
         <q-space />
         <nav class="row items-center" style="gap: 16px">
-          <NuxtLink @click="$router.push('/')">
-            Accueil
-          </NuxtLink>
-          <NuxtLink @click="$router.push('game')">
-            Jeux
-          </NuxtLink>
-          <NuxtLink @click="$router.push('about')">
-            A propos
-          </NuxtLink>
-          <NuxtLink @click="$router.push('help')">
-            Aide
-          </NuxtLink>
-          <NuxtLink @click="$router.push('contact')">
-            Contact
-          </NuxtLink>
-          <NuxtLink to="/posts/3">
-            post3
-          </NuxtLink>
-          <NuxtLink v-if="mainStore.user" to="/logged/magic">
+
+          <NuxtLink v-if="mainStore.user" to="/logged/crypto">
             Magic
           </NuxtLink>
           <NuxtLink v-if="!mainStore.user" to="/login">

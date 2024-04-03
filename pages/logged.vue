@@ -4,13 +4,13 @@
 
     <q-tabs>
       <q-route-tab
-        label="magic"
+        label="crypto"
         icon="list"
-        to="/logged/magic" />
-      <q-route-tab
+        to="/logged/crypto" />
+      <!-- <q-route-tab
         label="Trello"
         icon="tasks"
-        to="/logged/trello" />
+        to="/logged/trello" /> -->
     </q-tabs>
 
     <NuxtPage class="col column" />

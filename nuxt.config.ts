@@ -10,8 +10,8 @@ export default defineNuxtConfig({
   },
   runtimeConfig: {
     public: {
-      database_test: process.env.APPWRITE_DATABASE_TEST_ID,
-      collection_magic: process.env.APPWRITE_COLLECTION_MAGIC_ID
+      database_crypto: process.env.APPWRITE_DATABASE_CRYPTO_ID,
+      collection_crypto: process.env.APPWRITE_COLLECTION_CRYPTO_ID
     }
   }
 })
