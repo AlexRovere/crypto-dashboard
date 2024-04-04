@@ -16,7 +16,7 @@
         ]" />
 
       <!-- PASSWORD -->
-      <q-input v-model="password" type="password" min="8" placeholder="Password" :hint="type === 'registering' ? 'supermdpdelamortù&dj959548' : '3mH3gtSArw4Nf@9'"
+      <q-input v-model="password" type="password" min="8" placeholder="Password" :hint="type === 'registering' ? 'supermdpdelamortù&dj959548' : 'supermdpdelamortù&dj959548'"
         outlined lazy-rules counter required
         :rules="[
           val => !!val || 'Champ requis',
@@ -96,6 +96,6 @@ const rulesEmail = (val) => {
 }
 
 watch(() => mainStore.user, val => {
-  if (val) $router.push('/logged')
+  if (val) $router.push({ name: 'logged' })
 }, { immediate: true })
 </script>

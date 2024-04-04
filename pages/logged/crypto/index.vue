@@ -4,12 +4,53 @@
       <q-space />
       <q-btn @click="cryptoDialog = true" color="positive">Ajouter une crypto</q-btn>
     </div>
-    <div class="row gap-md items-center">
-      <template v-if="cryptosList" v-for="item of cryptosList" :key="item.id">
-        ID : {{ item.id }}
-        Nom : {{ item.name }}
-        Symbole : {{ item.symbol }}
-      </template>
+
+    <div class="row">
+
+      <div class="column col">
+        <div class="row gap-md">
+          <h6>Toutes les cryptos</h6>
+          <q-btn flat round dense icon="refresh" @click="fetchAllCryptos"></q-btn>
+        </div>
+
+        <div class="row  gap-md items-center">
+          <template v-if="allCryptos && allCryptos.length > 0" v-for="item of allCryptos" :key="item.id">
+            <q-card>
+              <q-card-section>
+                {{ item.name }} ( {{ item.symbol }} ) #{{ item.rank }}
+              </q-card-section>
+
+              <q-card-section>
+                Market cap : {{ item.marketCap.toFixed(2) }} $
+              </q-card-section>
+
+              <q-card-section>
+                Change 24h : <span :style="{ color: item.change24h > 0 ? 'green' : 'red' }"> {{ item.change24h.toFixed(2) }} % </span>
+              </q-card-section>
+
+              <q-card-section>
+                Valeur : {{ item.price.toFixed(2) }} $
+              </q-card-section>
+            </q-card>
+
+          </template>
+        </div>
+      </div>
+
+      <div class="column self-start col-4 gap-md items-center">
+        <h6>Mes cryptos</h6>
+        <template v-if="userCryptos && userCryptos.length > 0" v-for="item of userCryptos" :key="item.id">
+          <q-card>
+            <q-card-section>
+              {{ item.name }}
+            </q-card-section>
+
+            <q-card-section>
+              {{ item.quantity }}
+            </q-card-section>
+          </q-card>
+        </template>
+      </div>
     </div>
     <q-dialog v-model="cryptoDialog">
       <q-card style="width: 50vw">
@@ -81,19 +122,39 @@ const defaultCardData = {
 const config = useRuntimeConfig()
 
 
-const cards = ref([])
-const cryptosList = ref([])
+const userCryptos = ref([])
+const allCryptos = ref([])
+
+const fetchAllCryptos = async () => {
+  try {
+    await useFetch('https://api.coincap.io/v2/assets', {
+      onResponse ({ response }) {
+        console.log(response?._data?.data)
+        allCryptos.value = response?._data?.data.map((item) => {
+          return {
+            rank: item.rank,
+            name: item.name,
+            symbol: item.symbol,
+            price: +item.priceUsd,
+            marketCap: +item.marketCapUsd,
+            change24h: +item.changePercent24Hr
+          }
+        })
+      }
+    })
+
+  } catch (e) {
+    console.error(e)
+  }
+}
 
 onMounted(async () => {
-  cryptosList.value = await useFetch('https://api.coingecko.com/api/v3/coins/list')?.data
-  console.log(cryptosList.value)
-  fetchCrypto()
-
   try {
-    client.subscribe(`databases.${config.public.database_crypto}.collections.${config.public.collection_crypto}.documents`, response => {
-      // Callback will be executed on changes for documents A and all files.
-      fetchCrypto()
+    fetchAllCryptos()
+    fetchUserCrypto()
 
+    client.subscribe(`databases.${config.public.database_crypto}.collections.${config.public.collection_crypto}.documents`, response => {
+      fetchUserCrypto()
     })
   } catch (e) {
     console.error(e)
@@ -111,48 +172,49 @@ const removeChip = (chip) => {
 }
 
 
-// const fetchCrypto = async () => {
-//   try {
-//     const response = await DB.listDocuments(
-//       '655e0d807da8e3dce780',
-//       '655e0d89c8ee2375cf8f'
-//     )
-//     cards.value = response?.documents
-//   }
-//   catch (e) {
-//     console.error(e)
-//   }
-// }
+const fetchUserCrypto = async () => {
+  try {
+    const response = await DB.listDocuments(
+      '66058142ae7ac2bc3864',
+      '6605814b299b37157300'
+    )
+    userCryptos.value = response?.documents
+  }
+  catch (e) {
+    console.error(e)
+  }
+}
 
 
-// const saveCrypto = async () => {
-//   try {
-//     if (file.value) {
-//       const fileId = uid()
-//       card.fileId = fileId
-//       await storage.createFile(
-//         '651bed78e21021ee0a4f',
-//         fileId,
-//         file.value
-//       )
-//     }
+const saveCrypto = async () => {
+  console.log('save crypto')
+  //   try {
+  //     if (file.value) {
+  //       const fileId = uid()
+  //       card.fileId = fileId
+  //       await storage.createFile(
+  //         '651bed78e21021ee0a4f',
+  //         fileId,
+  //         file.value
+  //       )
+  //     }
 
-//     $q.loading.show()
-//     await DB.createDocument(
-//       '655e0d807da8e3dce780',
-//       '655e0d89c8ee2375cf8f',
-//       ID.unique(),
-//       card
-//     )
-//     $q.notify({ message: 'Carte enregistré avec succès', color: 'positive' })
-//     cryptoDialog.value = false
-//   } catch (e) {
-//     $q.notify({ message: 'Erreur lors de la création', color: 'negative' })
-//     console.error(e)
-//   } finally {
-//     $q.loading.hide()
-//   }
-// }
+  //     $q.loading.show()
+  //     await DB.createDocument(
+  //       '655e0d807da8e3dce780',
+  //       '655e0d89c8ee2375cf8f',
+  //       ID.unique(),
+  //       card
+  //     )
+  //     $q.notify({ message: 'Carte enregistré avec succès', color: 'positive' })
+  //     cryptoDialog.value = false
+  //   } catch (e) {
+  //     $q.notify({ message: 'Erreur lors de la création', color: 'negative' })
+  //     console.error(e)
+  //   } finally {
+  //     $q.loading.hide()
+  //   }
+}
 
 const editCrypto = _card => {
   Object.assign(card, _card)
