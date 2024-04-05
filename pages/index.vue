@@ -1,7 +1,7 @@
 <template>
   <q-form @submit="sendForm" class="col flex-center column">
 
-    <q-card class="column gap-md q-pa-lg" style="width: 30vw;  aspect-ratio: 1/1;">
+    <q-card class="column gap-md q-pa-lg" style="width: 30vw; ">
 
       <div class="row justify-center">
         <q-btn-toggle dense v-model="type" :options="[{ label: 'Créer un compte', value: 'registering' }, { label: 'Se connecter', value: 'connexion' }]"></q-btn-toggle>

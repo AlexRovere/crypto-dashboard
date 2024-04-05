@@ -5,7 +5,8 @@ export default defineNuxtConfig({
   quasar: {
     plugins: [
       'Notify',
-      'Loading'
+      'Loading',
+      'LocalStorage'
     ]
   },
   runtimeConfig: {

@@ -3,16 +3,15 @@
 
 
     <q-header class="bg-white q-pa-md">
-      <q-toolbar class="bg-white">
+      <q-toolbar class="bg-white row gap-md">
         <NuxtLink @click="$router.push({ name: 'index' })">
           <img src="~assets/img/coingecko.png" width="50">
         </NuxtLink>
+        <div v-if="mainStore.user" class="text-primary">
+          Bienvenue {{ mainStore.user.name }} !
+        </div>
         <q-space />
         <nav class="row items-center" style="gap: 16px">
-
-          <NuxtLink v-if="mainStore.user" :to="{ name: 'logged-crypto' }">
-            Crypto
-          </NuxtLink>
           <NuxtLink v-if="!mainStore.user" :to="{ name: 'logged' }">
             Se connecter
           </NuxtLink>

@@ -1,57 +1,110 @@
 <template>
   <div class="column gap-md">
-    <div class="row">
+    <div class="row gap-md items-center">
+
+      <q-tabs no-caps v-model="tab">
+        <q-tab name="allCryptos">Toutes les cryptos</q-tab>
+        <q-tab name="myCryptos">Mes cryptos</q-tab>
+      </q-tabs>
+
       <q-space />
+      <q-select dense outlined :options="currencyOpt" v-model="currency" />
       <q-btn @click="cryptoDialog = true" color="positive">Ajouter une crypto</q-btn>
     </div>
 
-    <div class="row">
+    <q-tab-panels v-model="tab">
 
-      <div class="column col">
-        <div class="row gap-md">
-          <h6>Toutes les cryptos</h6>
+      <q-tab-panel name="allCryptos">
+        <div class="row gap-md items-center">
+          <div class="text-h6">Toutes les cryptos</div>
           <q-btn flat round dense icon="refresh" @click="fetchAllCryptos"></q-btn>
+          <q-space />
+          <q-input dense outlined clearable v-model="search" />
         </div>
 
-        <div class="row  gap-md items-center">
-          <template v-if="allCryptos && allCryptos.length > 0" v-for="item of allCryptos" :key="item.id">
-            <q-card>
-              <q-card-section>
-                {{ item.name }} ( {{ item.symbol }} ) #{{ item.rank }}
+        <div class="row gap-md items-center">
+          <template v-if="allCryptosFiltered && allCryptosFiltered.length > 0" v-for="item of allCryptosFiltered" :key="item.id">
+            <q-card class="col-3" square>
+              <q-card-section class="row items-center gap-md">
+                <img width="40" :src="`https://assets.coincap.io/assets/icons/${item.id.toLowerCase()}@2x.png`" />
+                {{ item.name }} ( {{ item.id }} ) #{{ item.rank }}
               </q-card-section>
 
               <q-card-section>
-                Market cap : {{ item.marketCap.toFixed(2) }} $
+                Market cap : {{ item.marketCap.toFixed(2) }} {{ currency.label }}
               </q-card-section>
 
               <q-card-section>
-                Change 24h : <span :style="{ color: item.change24h > 0 ? 'green' : 'red' }"> {{ item.change24h.toFixed(2) }} % </span>
+                Change 24h : <span :style="{ color: isPositive(item.change24h) ? 'green' : 'red' }">
+                  <q-icon :name="isPositive(item.change24h) ? 'keyboard_double_arrow_up' : 'keyboard_double_arrow_down'" />
+                  {{ item.change24h.toFixed(2) }} % </span>
               </q-card-section>
 
               <q-card-section>
-                Valeur : {{ item.price.toFixed(2) }} $
+                Valeur : {{ item.price.toFixed(2) }} {{ currency.label }}
               </q-card-section>
             </q-card>
 
           </template>
         </div>
-      </div>
+      </q-tab-panel>
 
-      <div class="column self-start col-4 gap-md items-center">
-        <h6>Mes cryptos</h6>
-        <template v-if="userCryptos && userCryptos.length > 0" v-for="item of userCryptos" :key="item.id">
-          <q-card>
-            <q-card-section>
-              {{ item.name }}
-            </q-card-section>
+      <q-tab-panel name="myCryptos">
 
-            <q-card-section>
-              {{ item.quantity }}
-            </q-card-section>
-          </q-card>
-        </template>
-      </div>
-    </div>
+        <div class="row gap-md">
+          <div class="text-h6">Mes cryptos</div>
+          <q-btn flat round dense icon="refresh" @click="fetchDb"></q-btn>
+          <q-space />
+          <q-input dense outlined clearable v-model="search" />
+
+        </div>
+
+        <div class="row gap-md items-center">
+          <template v-if="userCryptos && userCryptos.length > 0" v-for="item of userCryptosFiltered" :key="item.id">
+            <q-card class="col-3">
+              <q-card-section class="row items-center gap-md">
+                <img width="40" :src="`https://assets.coincap.io/assets/icons/${item.$id.toLowerCase()}@2x.png`" />
+                {{ item.name }} ( {{ item.$id }} )
+              </q-card-section>
+
+
+              <q-card-section>
+                Quantité : {{ cryptoQuantity(item.$id) }}
+              </q-card-section>
+
+              <q-card-section>
+                Prix d'achat moyen : {{ cryptoAveragePrice(item.$id) }} {{ currency.label }}
+
+              </q-card-section>
+
+              <q-card-section>
+                Total investi : {{ cryptoInvest(item.$id) }} {{ currency.label }}
+
+              </q-card-section>
+
+              <q-card-section>
+                Total Actuel : {{ cryptoTotal(item.$id) }} {{ currency.label }}
+
+              </q-card-section>
+
+              <q-card-section>
+                Profit :
+                <span :style="{ color: isPositive(cryptoProfit(item.$id)) ? 'green' : 'red' }">
+                  <q-icon :name="isPositive(cryptoProfit(item.$id)) ? 'keyboard_double_arrow_up' : 'keyboard_double_arrow_down'" />
+                  {{ cryptoProfit(item.$id) }} %</span>
+              </q-card-section>
+
+            </q-card>
+          </template>
+        </div>
+      </q-tab-panel>
+
+
+    </q-tab-panels>
+
+
+
+
     <q-dialog v-model="cryptoDialog">
       <q-card style="width: 50vw">
         <!-- HEADER -->
@@ -121,20 +174,48 @@ const defaultCardData = {
 
 const config = useRuntimeConfig()
 
+const tab = ref('myCyptos')
+
 
 const userCryptos = ref([])
+const transactions = ref([])
 const allCryptos = ref([])
+
+const allCryptosFiltered = computed(() => {
+  return search.value ? allCryptos.value.filter(a => a.name.toLowerCase().includes(search.value.toLowerCase()) || a.id.toLowerCase().includes(search.value.toLowerCase())) : allCryptos.value
+})
+
+const userCryptosFiltered = computed(() => {
+  return search.value ? userCryptosFiltered.value.filter(a => a.name.toLowerCase().includes(search.value.toLowerCase()) || a.$id.toLowerCase().includes(search.value.toLowerCase())) : userCryptos.value
+})
+
+const search = ref('')
+
+const currency = ref({
+  label: '$',
+  value: 1
+})
+
+const currencyOpt = [
+  {
+    label: '$',
+    value: 1
+  },
+  {
+    label: '€',
+    value: 1.0855
+  }
+]
 
 const fetchAllCryptos = async () => {
   try {
     await useFetch('https://api.coincap.io/v2/assets', {
       onResponse ({ response }) {
-        console.log(response?._data?.data)
         allCryptos.value = response?._data?.data.map((item) => {
           return {
+            id: item.symbol,
             rank: item.rank,
             name: item.name,
-            symbol: item.symbol,
             price: +item.priceUsd,
             marketCap: +item.marketCapUsd,
             change24h: +item.changePercent24Hr
@@ -150,8 +231,11 @@ const fetchAllCryptos = async () => {
 
 onMounted(async () => {
   try {
+    if ($q.localStorage.has('currency')) currency.value = $q.localStorage.getItem('currency')
+    if ($q.localStorage.has('tab')) tab.value = $q.localStorage.getItem('tab')
+
     fetchAllCryptos()
-    fetchUserCrypto()
+    fetchDb()
 
     client.subscribe(`databases.${config.public.database_crypto}.collections.${config.public.collection_crypto}.documents`, response => {
       fetchUserCrypto()
@@ -171,6 +255,11 @@ const removeChip = (chip) => {
   card.colors.splice(idx, 1)
 }
 
+const fetchDb = () => {
+  fetchUserCrypto()
+  fetchTransactions()
+}
+
 
 const fetchUserCrypto = async () => {
   try {
@@ -185,9 +274,21 @@ const fetchUserCrypto = async () => {
   }
 }
 
+const fetchTransactions = async () => {
+  try {
+    const response = await DB.listDocuments(
+      '66058142ae7ac2bc3864',
+      '660fb13c51fb6f87af02'
+    )
+    transactions.value = response?.documents
+  }
+  catch (e) {
+    console.error(e)
+  }
+}
+
 
 const saveCrypto = async () => {
-  console.log('save crypto')
   //   try {
   //     if (file.value) {
   //       const fileId = uid()
@@ -243,6 +344,53 @@ watch(cryptoDialog, val => {
     Object.assign(card, defaultCard)
     file.value = null
   }
+})
+
+const isPositive = number => {
+  if (number >= 0) return true
+  return false
+}
+
+const cryptoQuantity = id => {
+  return transactions.value.filter(t => {
+    return t.cryptos.$id === id
+  }).reduce((acc, curr) => {
+    return acc + curr.quantity
+  }, 0).toFixed(2)
+}
+
+const cryptoAveragePrice = id => {
+  let quantity = 0
+  return ((transactions.value.filter(t => {
+    return t.cryptos.$id === id
+  }).reduce((acc, curr) => {
+    quantity += curr.quantity
+    return acc + curr.price
+  }, 0) / quantity) * currency.value.value).toFixed(2)
+}
+
+const cryptoInvest = id => {
+  return (cryptoQuantity(id) * cryptoAveragePrice(id)).toFixed(2)
+}
+
+const cryptoTotal = id => {
+  if (allCryptos.value && allCryptos.value.length > 0) {
+    const currentPrice = allCryptos.value.find(c => c.id === id).price
+    return (currentPrice * currency.value.value * cryptoQuantity(id)).toFixed(2)
+  }
+  return 'N/A'
+}
+
+const cryptoProfit = id => {
+  return ((cryptoTotal(id) - cryptoInvest(id)) / cryptoInvest(id) * 100).toFixed(2)
+}
+
+watch(currency, val => {
+  $q.localStorage.set('currency', val)
+})
+
+watch(tab, val => {
+  $q.localStorage.set('tab', val)
 })
 
 
