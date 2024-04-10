@@ -120,10 +120,9 @@
           <div class="row items-center gap-md">
 
             <!-- NAME -->
-            <q-input v-model="card.name" label="Nom" class="col" outlined dense />
+             <q-select v-model="crypto.id" :options="allCryptosOptions" map-options emit-value label="Nom" class="col" outlined dense />
+            <!-- <q-input v-model="card.name" label="Nom" class="col" outlined dense /> -->
 
-            <!-- COST -->
-            <q-input v-model="card.cost" label="Coût" class="col" outlined dense />
           </div>
 
         </q-card-section>
@@ -176,10 +175,21 @@ const config = useRuntimeConfig()
 
 const tab = ref('myCyptos')
 
+const crypto = ref('')
+
 
 const userCryptos = ref([])
 const transactions = ref([])
 const allCryptos = ref([])
+
+const allCryptosOptions = computed(() => {
+  return allCryptos.value.length ? allCryptos.value.map(el => {
+    return {
+      label: el.name,
+      value: el.symbol
+    }
+  }) : []
+})
 
 const allCryptosFiltered = computed(() => {
   return search.value ? allCryptos.value.filter(a => a.name.toLowerCase().includes(search.value.toLowerCase()) || a.id.toLowerCase().includes(search.value.toLowerCase())) : allCryptos.value
