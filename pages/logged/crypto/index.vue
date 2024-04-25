@@ -26,8 +26,15 @@
           <template v-if="allCryptosFiltered && allCryptosFiltered.length > 0" v-for="item of allCryptosFiltered" :key="item.id">
             <q-card class="col-3" square>
               <q-card-section class="row items-center gap-md">
-                <img width="40" :src="`https://assets.coincap.io/assets/icons/${item.id.toLowerCase()}@2x.png`" />
-                {{ item.name }} ( {{ item.id }} ) #{{ item.rank }}
+                <div>
+                  <img width="40" :src="`https://assets.coincap.io/assets/icons/${item.id.toLowerCase()}@2x.png`" />
+                  {{ item.name }} ( {{ item.id }} ) #{{ item.rank }}
+                </div>
+                <q-space />
+                <div>
+                  <q-icon v-if="isCryptoActive(item.id)" name="star" size="sm" color="yellow" @click="disableCrypto(item.id)" />
+                  <q-icon v-else name=" star" size="sm" @click=" activateCrypto(item.id, item.name)" />
+                </div>
               </q-card-section>
 
               <q-card-section>
@@ -60,11 +67,17 @@
         </div>
 
         <div class="row gap-md items-center">
+
           <template v-if="userCryptos && userCryptos.length > 0" v-for="item of userCryptosFiltered" :key="item.id">
             <q-card class="col-3">
-              <q-card-section class="row items-center gap-md">
-                <img width="40" :src="`https://assets.coincap.io/assets/icons/${item.$id.toLowerCase()}@2x.png`" />
-                {{ item.name }} ( {{ item.$id }} )
+              <q-card-section class="row items-center">
+                <div class="row items-center gap-md">
+                  <img width="40" :src="`https://assets.coincap.io/assets/icons/${item.$id.toLowerCase()}@2x.png`" />
+                  {{ item.name }} ( {{ item.$id }} )
+                </div>
+                <q-space />
+                <q-icon name="add" size="sm" />
+                <q-icon name="more_vert" size="sm" />
               </q-card-section>
 
 
@@ -72,22 +85,22 @@
                 Quantité : {{ cryptoQuantity(item.$id) }}
               </q-card-section>
 
-              <q-card-section>
+              <q-card-section v-if="cryptoQuantity(item.$id) > 0">
                 Prix d'achat moyen : {{ cryptoAveragePrice(item.$id) }} {{ currency.label }}
 
               </q-card-section>
 
-              <q-card-section>
+              <q-card-section v-if="cryptoQuantity(item.$id) > 0">
                 Total investi : {{ cryptoInvest(item.$id) }} {{ currency.label }}
 
               </q-card-section>
 
-              <q-card-section>
+              <q-card-section v-if="cryptoQuantity(item.$id) > 0">
                 Total Actuel : {{ cryptoTotal(item.$id) }} {{ currency.label }}
 
               </q-card-section>
 
-              <q-card-section>
+              <q-card-section v-if="cryptoQuantity(item.$id) > 0">
                 Profit :
                 <span :style="{ color: isPositive(cryptoProfit(item.$id)) ? 'green' : 'red' }">
                   <q-icon :name="isPositive(cryptoProfit(item.$id)) ? 'keyboard_double_arrow_up' : 'keyboard_double_arrow_down'" />
@@ -120,7 +133,7 @@
           <div class="row items-center gap-md">
 
             <!-- NAME -->
-             <q-select v-model="crypto.id" :options="allCryptosOptions" map-options emit-value label="Nom" class="col" outlined dense />
+            <q-select v-model="crypto" :options="allCryptosOptions" map-options label="Nom" class="col" outlined dense />
             <!-- <q-input v-model="card.name" label="Nom" class="col" outlined dense /> -->
 
           </div>
@@ -131,7 +144,7 @@
         <q-card-section class="row items-centers">
           <q-btn @click="cryptoDialog = false">Annuler</q-btn>
           <q-space />
-          <q-btn @click="saveCrypto" color="positive">Sauvegarder</q-btn>
+          <q-btn @click="activateCrypto(crypto.value, crypto.label)" color="positive">Sauvegarder</q-btn>
         </q-card-section>
 
       </q-card>
@@ -186,9 +199,9 @@ const allCryptosOptions = computed(() => {
   return allCryptos.value.length ? allCryptos.value.map(el => {
     return {
       label: el.name,
-      value: el.symbol
+      value: el.id
     }
-  }) : []
+  }).filter(c => !userCryptos.value.some(uc => uc.$id === c.value)) : []
 })
 
 const allCryptosFiltered = computed(() => {
@@ -349,6 +362,41 @@ const deleteCrypto = async (card) => {
   }
 }
 
+const activateCrypto = async (id, name) => {
+  try {
+    const data = {
+      name
+    }
+    $q.loading.show()
+    await DB.createDocument(
+      '66058142ae7ac2bc3864',
+      '6605814b299b37157300',
+      id,
+      data
+    )
+  } catch (e) {
+    console.error(e)
+  } finally {
+    cryptoDialog.value = false
+    $q.loading.hide()
+  }
+}
+
+const disableCrypto = async id => {
+  try {
+    $q.loading.show()
+    await DB.deleteDocument(
+      '66058142ae7ac2bc3864',
+      '6605814b299b37157300',
+      id
+    )
+  } catch (e) {
+    console.error(e)
+  } finally {
+    $q.loading.hide()
+  }
+}
+
 watch(cryptoDialog, val => {
   if (!val) {
     Object.assign(card, defaultCard)
@@ -363,7 +411,7 @@ const isPositive = number => {
 
 const cryptoQuantity = id => {
   return transactions.value.filter(t => {
-    return t.cryptos.$id === id
+    return t.cryptos?.$id === id
   }).reduce((acc, curr) => {
     return acc + curr.quantity
   }, 0).toFixed(2)
@@ -372,7 +420,7 @@ const cryptoQuantity = id => {
 const cryptoAveragePrice = id => {
   let quantity = 0
   return ((transactions.value.filter(t => {
-    return t.cryptos.$id === id
+    return t.cryptos?.$id === id
   }).reduce((acc, curr) => {
     quantity += curr.quantity
     return acc + curr.price
@@ -393,6 +441,10 @@ const cryptoTotal = id => {
 
 const cryptoProfit = id => {
   return ((cryptoTotal(id) - cryptoInvest(id)) / cryptoInvest(id) * 100).toFixed(2)
+}
+
+const isCryptoActive = id => {
+  return userCryptos.value.some(c => c.$id === id)
 }
 
 watch(currency, val => {
