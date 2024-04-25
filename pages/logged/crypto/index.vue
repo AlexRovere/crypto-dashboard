@@ -2,7 +2,7 @@
   <div class="column gap-md">
     <div class="row gap-md items-center">
 
-      <q-tabs no-caps v-model="tab">
+      <q-tabs no-caps v-model="cryptoTab">
         <q-tab name="allCryptos">Toutes les cryptos</q-tab>
         <q-tab name="myCryptos">Mes cryptos</q-tab>
       </q-tabs>
@@ -12,7 +12,7 @@
       <q-btn @click="cryptoDialog = true" color="positive">Ajouter une crypto</q-btn>
     </div>
 
-    <q-tab-panels v-model="tab">
+    <q-tab-panels v-model="cryptoTab">
 
       <q-tab-panel name="allCryptos">
         <div class="row gap-md items-center">
@@ -76,8 +76,20 @@
                   {{ item.name }} ( {{ item.$id }} )
                 </div>
                 <q-space />
-                <q-icon name="add" size="sm" />
-                <q-icon name="more_vert" size="sm" />
+                <q-btn-dropdown flat dense dropdown-icon="more_vert">
+                  <q-list>
+                    <q-item clickable v-close-popup @click="openTransaction(item)">
+                      <q-item-section>
+                        <q-item-label>Ajouter une transaction</q-item-label>
+                      </q-item-section>
+                    </q-item>
+                    <q-item clickable v-close-popup @click="disableCrypto(item.$id)">
+                      <q-item-section>
+                        <q-item-label>Retirer la crypto</q-item-label>
+                      </q-item-section>
+                    </q-item>
+                  </q-list>
+                </q-btn-dropdown>
               </q-card-section>
 
 
@@ -127,14 +139,16 @@
           <q-btn @click="cryptoDialog = false" icon="close" dense outlined flat round />
         </q-card-section>
 
+
+
+
         <!-- BODY -->
         <q-card-section class="column gap-md">
 
           <div class="row items-center gap-md">
 
             <!-- NAME -->
-            <q-select v-model="crypto" :options="allCryptosOptions" map-options label="Nom" class="col" outlined dense />
-            <!-- <q-input v-model="card.name" label="Nom" class="col" outlined dense /> -->
+            <q-select use-input hide-selected fill-input input-debounce="0" @filter="filterFn" v-model="newCrypto" :options="filteredCryptosOptions" map-options label="Nom" class="col" outlined dense />
 
           </div>
 
@@ -144,7 +158,53 @@
         <q-card-section class="row items-centers">
           <q-btn @click="cryptoDialog = false">Annuler</q-btn>
           <q-space />
-          <q-btn @click="activateCrypto(crypto.value, crypto.label)" color="positive">Sauvegarder</q-btn>
+          <q-btn @click="activateCrypto(newCrypto.value, newCrypto.label)" color="positive">Sauvegarder</q-btn>
+        </q-card-section>
+
+      </q-card>
+    </q-dialog>
+
+    <q-dialog v-model="transactionDialog">
+      <q-card style="width: 50vw">
+        <!-- HEADER -->
+        <q-card-section class="row items-center">
+          Nouvelle transaction
+          <q-space />
+          <q-btn @click="transactionDialog = false" icon="close" dense outlined flat round />
+        </q-card-section>
+
+        <q-tabs dense v-model="transactionTab">
+          <q-tab name="buy" icon="payments" label="Achat" />
+          <q-tab name="sell" icon="sell" label="Vente" />
+        </q-tabs>
+
+        <q-tab-panels v-model="transactionTab">
+
+          <!-- BUY TRANSACTION -->
+          <q-tab-panel name="buy">
+            <q-card-section class="column gap-md">
+              {{ newTransaction }}
+              <q-select v-model="newTransaction.crypto" :options="userCryptosOptions" emit-value map-options />
+            </q-card-section>
+          </q-tab-panel>
+
+          <!-- SELL TRANSACTION -->
+          <q-tab-panel name="sell">
+            <q-card-section class="column gap-md">
+              {{ newTransaction }}
+
+            </q-card-section>
+          </q-tab-panel>
+        </q-tab-panels>
+
+        <!-- BODY -->
+
+
+        <!-- FOOTER -->
+        <q-card-section class="row items-centers">
+          <q-btn @click="transactionDialog = false">Annuler</q-btn>
+          <q-space />
+          <q-btn @click="activateCrypto(newCrypto.value, newCrypto.label)" color="positive">Sauvegarder</q-btn>
         </q-card-section>
 
       </q-card>
@@ -159,36 +219,18 @@ import { useQuasar } from 'quasar'
 const $q = useQuasar()
 
 const cryptoDialog = ref(false)
-
-const defaultCard = {
-  name: '',
-  cost: '',
-  colors: [],
-  type: '',
-  expansion: '',
-  skills: [],
-  description: '',
-  attack: '',
-  endurance: '',
-}
-
-const defaultCardData = {
-  name: 'nom',
-  cost: 'cost',
-  colors: ['R', 'B'],
-  type: 'type',
-  expansion: 'expansion',
-  skills: ['fly'],
-  description: 'description',
-  attack: 'attack',
-  endurance: 'endurance',
-}
+const transactionDialog = ref(false)
 
 const config = useRuntimeConfig()
 
-const tab = ref('myCyptos')
+const cryptoTab = ref('myCyptos')
+const transactionTab = ref('buy')
 
-const crypto = ref('')
+const newCrypto = ref('')
+const newTransaction = ref({
+  crypto: null,
+  transaction: transactionTab.value
+})
 
 
 const userCryptos = ref([])
@@ -203,6 +245,18 @@ const allCryptosOptions = computed(() => {
     }
   }).filter(c => !userCryptos.value.some(uc => uc.$id === c.value)) : []
 })
+
+const filteredCryptosOptions = ref(allCryptosOptions.value)
+
+const userCryptosOptions = computed(() => {
+  return userCryptos.value.length ? userCryptos.value.map(el => {
+    return {
+      label: el.name,
+      value: el.$id
+    }
+  }) : []
+})
+
 
 const allCryptosFiltered = computed(() => {
   return search.value ? allCryptos.value.filter(a => a.name.toLowerCase().includes(search.value.toLowerCase()) || a.id.toLowerCase().includes(search.value.toLowerCase())) : allCryptos.value
@@ -255,7 +309,7 @@ const fetchAllCryptos = async () => {
 onMounted(async () => {
   try {
     if ($q.localStorage.has('currency')) currency.value = $q.localStorage.getItem('currency')
-    if ($q.localStorage.has('tab')) tab.value = $q.localStorage.getItem('tab')
+    if ($q.localStorage.has('cryptoTab')) cryptoTab.value = $q.localStorage.getItem('cryptoTab')
 
     fetchAllCryptos()
     fetchDb()
@@ -269,14 +323,6 @@ onMounted(async () => {
 
 })
 
-const card = reactive({ ...defaultCardData })
-
-const file = ref(null)
-
-const removeChip = (chip) => {
-  const idx = card.colors.findIndex(c => c.value === chip.value)
-  card.colors.splice(idx, 1)
-}
 
 const fetchDb = () => {
   fetchUserCrypto()
@@ -340,28 +386,6 @@ const saveCrypto = async () => {
   //   }
 }
 
-const editCrypto = _card => {
-  Object.assign(card, _card)
-  cryptoDialog.value = true
-}
-
-const deleteCrypto = async (card) => {
-  try {
-    $q.loading.show()
-    await DB.deleteDocument(
-      '655e0d807da8e3dce780',
-      '655e0d89c8ee2375cf8f',
-      card.$id
-    )
-    $q.notify({ message: 'Carte supprimée avec succès', color: 'positive' })
-  } catch (e) {
-    $q.notify({ message: 'Erreur lors de la suppression', color: 'negative' })
-    console.error(e)
-  } finally {
-    $q.loading.hide()
-  }
-}
-
 const activateCrypto = async (id, name) => {
   try {
     const data = {
@@ -396,13 +420,6 @@ const disableCrypto = async id => {
     $q.loading.hide()
   }
 }
-
-watch(cryptoDialog, val => {
-  if (!val) {
-    Object.assign(card, defaultCard)
-    file.value = null
-  }
-})
 
 const isPositive = number => {
   if (number >= 0) return true
@@ -447,14 +464,32 @@ const isCryptoActive = id => {
   return userCryptos.value.some(c => c.$id === id)
 }
 
+const filterFn = (val, update, abort) => {
+  update(() => {
+    const needle = val.toLowerCase()
+    filteredCryptosOptions.value = allCryptosOptions.value.filter(v => v.label.toLowerCase().indexOf(needle) > -1 || v.value.toLowerCase().indexOf(needle) > -1)
+  })
+}
+
+const openTransaction = crypto => {
+  transactionDialog.value = true
+  newTransaction.value.crypto = {
+    label: crypto.name,
+    value: crypto.$id
+  }
+}
+
 watch(currency, val => {
   $q.localStorage.set('currency', val)
 })
 
-watch(tab, val => {
-  $q.localStorage.set('tab', val)
+watch(cryptoTab, val => {
+  $q.localStorage.set('cryptoTab', val)
 })
 
+watch(transactionTab, val => {
+  newTransaction.value.transaction = val
+}, { immediate: true })
 
 
 </script>
