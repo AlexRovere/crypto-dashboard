@@ -12,7 +12,8 @@ export default defineNuxtConfig({
   runtimeConfig: {
     public: {
       database_crypto: process.env.APPWRITE_DATABASE_CRYPTO_ID,
-      collection_crypto: process.env.APPWRITE_COLLECTION_CRYPTO_ID
+      collection_crypto: process.env.APPWRITE_COLLECTION_CRYPTO_ID,
+      collection_transaction: process.env.APPWRITE_COLLECTION_TRANSACTION_ID
     }
   }
 })

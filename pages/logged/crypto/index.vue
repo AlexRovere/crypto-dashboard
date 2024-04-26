@@ -38,7 +38,7 @@
               </q-card-section>
 
               <q-card-section>
-                Market cap : {{ item.marketCap.toFixed(2) }} {{ currency.label }}
+                Market cap : {{ (item.marketCap * currency.value).toFixed(2) }} {{ currency.label }}
               </q-card-section>
 
               <q-card-section>
@@ -48,7 +48,7 @@
               </q-card-section>
 
               <q-card-section>
-                Valeur : {{ item.price.toFixed(2) }} {{ currency.label }}
+                Valeur : {{ (item.price * currency.value).toFixed(2) }} {{ currency.label }}
               </q-card-section>
             </q-card>
 
@@ -56,11 +56,38 @@
         </div>
       </q-tab-panel>
 
-      <q-tab-panel name="myCryptos">
+      <q-tab-panel class="gap-md column" name="myCryptos">
 
-        <div class="row gap-md">
-          <div class="text-h6">Mes cryptos</div>
-          <q-btn flat round dense icon="refresh" @click="fetchDb"></q-btn>
+        <div class="row gap-md items-center">
+          <div class="row gap-md justify-start">
+            <div class="text-h6">Mes cryptos</div>
+            <q-btn flat round dense icon="refresh" @click="fetchDb"></q-btn>
+          </div>
+          <q-card class="q-pa-md">
+            <div class="row items-center" :style="{ color: isPositive(totalProfit) ? 'green' : 'red' }">
+              <q-icon size="md" :name="isPositive(totalProfit) ? 'keyboard_double_arrow_up' : 'keyboard_double_arrow_down'" />
+
+              <span class="text-h6">
+                {{ ((totalActual - totalInvest) * currency.value).toFixed(2) }} {{ currency.label }} <br /> {{ totalProfit }} %</span>
+            </div>
+            <div class="justify-center row">
+              Balance
+            </div>
+          </q-card>
+
+          <q-card class="q-pa-md self-stretch">
+            {{ (totalInvest * currency.value).toFixed(2) }} {{ currency.label }}
+            <div class="justify-center row">
+              Investi
+            </div>
+          </q-card>
+
+          <q-card class="q-pa-md self-stretch">
+            {{ (totalActual * currency.value).toFixed(2) }} {{ currency.label }}
+            <div class="justify-center row">
+              Actuel
+            </div>
+          </q-card>
           <q-space />
           <q-input dense outlined clearable v-model="search" />
 
@@ -88,10 +115,18 @@
                         <q-item-label>Retirer la crypto</q-item-label>
                       </q-item-section>
                     </q-item>
+                    <q-item clickable v-close-popup @click="openTransactionsHistory(item)">
+                      <q-item-section>
+                        <q-item-label>Voir l'historique des transactions</q-item-label>
+                      </q-item-section>
+                    </q-item>
                   </q-list>
                 </q-btn-dropdown>
               </q-card-section>
 
+              <q-card-section v-if="currentValue(item.$id)">
+                Valeur du token : {{ currentValue(item.$id).toFixed(2) }} {{ currency.label }}
+              </q-card-section>
 
               <q-card-section>
                 Quantité : {{ cryptoQuantity(item.$id) }}
@@ -103,14 +138,14 @@
               </q-card-section>
 
               <q-card-section v-if="cryptoQuantity(item.$id) > 0">
-                Total investi : {{ cryptoInvest(item.$id) }} {{ currency.label }}
+                Investi : {{ cryptoInvest(item.$id) }} {{ currency.label }}
 
               </q-card-section>
 
               <q-card-section v-if="cryptoQuantity(item.$id) > 0">
-                Total Actuel : {{ cryptoTotal(item.$id) }} {{ currency.label }}
-
+                Actuel : {{ cryptoTotal(item.$id) }} {{ currency.label }}
               </q-card-section>
+
 
               <q-card-section v-if="cryptoQuantity(item.$id) > 0">
                 Profit :
@@ -128,10 +163,11 @@
     </q-tab-panels>
 
 
-
+    <!-- NEW CRYPTO DIALOG -->
 
     <q-dialog v-model="cryptoDialog">
       <q-card style="width: 50vw">
+
         <!-- HEADER -->
         <q-card-section class="row items-center">
           Nouvelle crypto
@@ -139,19 +175,11 @@
           <q-btn @click="cryptoDialog = false" icon="close" dense outlined flat round />
         </q-card-section>
 
-
-
-
         <!-- BODY -->
         <q-card-section class="column gap-md">
-
           <div class="row items-center gap-md">
-
-            <!-- NAME -->
             <q-select use-input hide-selected fill-input input-debounce="0" @filter="filterFn" v-model="newCrypto" :options="filteredCryptosOptions" map-options label="Nom" class="col" outlined dense />
-
           </div>
-
         </q-card-section>
 
         <!-- FOOTER -->
@@ -164,8 +192,11 @@
       </q-card>
     </q-dialog>
 
+    <!-- TRANSACTION DIALOG -->
+
     <q-dialog v-model="transactionDialog">
       <q-card style="width: 50vw">
+
         <!-- HEADER -->
         <q-card-section class="row items-center">
           Nouvelle transaction
@@ -183,32 +214,79 @@
           <!-- BUY TRANSACTION -->
           <q-tab-panel name="buy">
             <q-card-section class="column gap-md">
-              {{ newTransaction }}
-              <q-select v-model="newTransaction.crypto" :options="userCryptosOptions" emit-value map-options />
+              <q-select label="Crypto" dense outlined v-model="newTransaction.crypto" :options="userCryptosOptions" emit-value map-options />
+
+              <div class="row gap-md items-center">
+                <q-input label="Quantité" dense outlined class="col" type="number" min="0" :rules="[val => val > 0 || 'Doit être supérieur à 0']" v-model="newTransaction.quantity"></q-input>
+
+                <q-input label="Prix par token" dense outlined class="col" type="number" min="0" :rules="[val => val > 0 || 'Doit être supérieur à 0']" v-model="newTransaction.coinPrice"></q-input>
+              </div>
+
+              <q-input label="Total dépensé" dense outlined readonly v-model="newTransaction.totalSpent"></q-input>
+
             </q-card-section>
           </q-tab-panel>
 
           <!-- SELL TRANSACTION -->
           <q-tab-panel name="sell">
             <q-card-section class="column gap-md">
-              {{ newTransaction }}
+              <q-select label="Crypto" dense outlined v-model="newTransaction.crypto" :options="userCryptosOptions" emit-value map-options />
+
+              <div class="row gap-md items-center">
+                <q-input label="Quantité" dense outlined class="col" type="number" min="0" :rules="[val => val > 0 || 'Doit être supérieur à 0']" v-model="newTransaction.quantity"></q-input>
+
+                <q-input label="Prix par token" dense outlined class="col" type="number" min="0" :rules="[val => val > 0 || 'Doit être supérieur à 0']" v-model="newTransaction.coinPrice"></q-input>
+              </div>
+
+              <q-input label="Total reçu" dense outlined readonly v-model="newTransaction.totalReceived"></q-input>
 
             </q-card-section>
           </q-tab-panel>
+
         </q-tab-panels>
-
-        <!-- BODY -->
-
 
         <!-- FOOTER -->
         <q-card-section class="row items-centers">
           <q-btn @click="transactionDialog = false">Annuler</q-btn>
           <q-space />
-          <q-btn @click="activateCrypto(newCrypto.value, newCrypto.label)" color="positive">Sauvegarder</q-btn>
+          <q-btn @click="saveTransaction()" color="positive">Sauvegarder</q-btn>
         </q-card-section>
 
       </q-card>
     </q-dialog>
+
+    <!-- TRANSACTION HISTORY DIALOG -->
+
+    <q-dialog v-model="transcationHistoryDialog">
+      <q-card style="width: 50vw">
+
+        <!-- HEADER -->
+        <q-card-section class="row items-center">
+          Historiques des transactions de {{ transactionHistory.name }} ({{ transactionHistory.$id }})
+          <q-space />
+          <q-btn @click="transcationHistoryDialog = false" icon="close" dense outlined flat round />
+        </q-card-section>
+
+        <!-- BODY -->
+        <q-card-section class="column gap-md">
+          <q-table dense flat title="Historique" :rows="transactionHistoryList(transactionHistory.$id)" :columns="transactionsHistoryCols" row-key="id">
+            <template v-slot:body-cell-actions="props">
+              <q-td :props="props">
+                <q-btn dense round flat color="negative" @click="deleteTransactionHistory(props.row)" icon="close" size="sm"></q-btn>
+              </q-td>
+            </template></q-table>
+        </q-card-section>
+
+        <!-- FOOTER -->
+        <q-card-section class="row items-centers">
+          <q-space />
+          <q-btn flat dense v-close-popup>Fermer</q-btn>
+        </q-card-section>
+
+      </q-card>
+    </q-dialog>
+
+
   </div>
 </template>
 
@@ -220,6 +298,7 @@ const $q = useQuasar()
 
 const cryptoDialog = ref(false)
 const transactionDialog = ref(false)
+const transcationHistoryDialog = ref(false)
 
 const config = useRuntimeConfig()
 
@@ -227,10 +306,26 @@ const cryptoTab = ref('myCyptos')
 const transactionTab = ref('buy')
 
 const newCrypto = ref('')
+
+const defaultNewTransaction = {
+  crypto: null,
+  type: transactionTab.value,
+  quantity: '',
+  coinPrice: '',
+  totalSpent: '',
+  totalReceived: ''
+}
+
 const newTransaction = ref({
   crypto: null,
-  transaction: transactionTab.value
+  type: transactionTab.value,
+  quantity: '',
+  coinPrice: '',
+  totalSpent: '',
+  totalReceived: ''
 })
+
+const transactionHistory = ref(false)
 
 
 const userCryptos = ref([])
@@ -280,7 +375,7 @@ const currencyOpt = [
   },
   {
     label: '€',
-    value: 1.0855
+    value: 0.95
   }
 ]
 
@@ -311,11 +406,15 @@ onMounted(async () => {
     if ($q.localStorage.has('currency')) currency.value = $q.localStorage.getItem('currency')
     if ($q.localStorage.has('cryptoTab')) cryptoTab.value = $q.localStorage.getItem('cryptoTab')
 
-    fetchAllCryptos()
-    fetchDb()
+    await fetchAllCryptos()
+    await fetchDb()
 
     client.subscribe(`databases.${config.public.database_crypto}.collections.${config.public.collection_crypto}.documents`, response => {
       fetchUserCrypto()
+    })
+
+    client.subscribe(`databases.${config.public.database_crypto}.collections.${config.public.collection_transaction}.documents`, response => {
+      fetchTransactions()
     })
   } catch (e) {
     console.error(e)
@@ -354,36 +453,6 @@ const fetchTransactions = async () => {
   catch (e) {
     console.error(e)
   }
-}
-
-
-const saveCrypto = async () => {
-  //   try {
-  //     if (file.value) {
-  //       const fileId = uid()
-  //       card.fileId = fileId
-  //       await storage.createFile(
-  //         '651bed78e21021ee0a4f',
-  //         fileId,
-  //         file.value
-  //       )
-  //     }
-
-  //     $q.loading.show()
-  //     await DB.createDocument(
-  //       '655e0d807da8e3dce780',
-  //       '655e0d89c8ee2375cf8f',
-  //       ID.unique(),
-  //       card
-  //     )
-  //     $q.notify({ message: 'Carte enregistré avec succès', color: 'positive' })
-  //     cryptoDialog.value = false
-  //   } catch (e) {
-  //     $q.notify({ message: 'Erreur lors de la création', color: 'negative' })
-  //     console.error(e)
-  //   } finally {
-  //     $q.loading.hide()
-  //   }
 }
 
 const activateCrypto = async (id, name) => {
@@ -440,9 +509,10 @@ const cryptoAveragePrice = id => {
     return t.cryptos?.$id === id
   }).reduce((acc, curr) => {
     quantity += curr.quantity
-    return acc + curr.price
+    return acc + (curr.price * quantity)
   }, 0) / quantity) * currency.value.value).toFixed(2)
 }
+
 
 const cryptoInvest = id => {
   return (cryptoQuantity(id) * cryptoAveragePrice(id)).toFixed(2)
@@ -451,7 +521,7 @@ const cryptoInvest = id => {
 const cryptoTotal = id => {
   if (allCryptos.value && allCryptos.value.length > 0) {
     const currentPrice = allCryptos.value.find(c => c.id === id).price
-    return (currentPrice * currency.value.value * cryptoQuantity(id)).toFixed(2)
+    return ((currentPrice * currency.value.value) * cryptoQuantity(id)).toFixed(2)
   }
   return 'N/A'
 }
@@ -473,11 +543,131 @@ const filterFn = (val, update, abort) => {
 
 const openTransaction = crypto => {
   transactionDialog.value = true
+  Object.assign(newTransaction.value, defaultNewTransaction)
   newTransaction.value.crypto = {
     label: crypto.name,
     value: crypto.$id
   }
 }
+
+const saveTransaction = async () => {
+  try {
+    const data = {
+      cryptos: newTransaction.value.crypto.value,
+      quantity: newTransaction.value.quantity,
+      price: newTransaction.value.coinPrice,
+      type: newTransaction.value.type
+    }
+    $q.loading.show()
+    await DB.createDocument(
+      '66058142ae7ac2bc3864',
+      '660fb13c51fb6f87af02',
+      ID.unique(),
+      data
+    )
+  } catch (e) {
+    console.error(e)
+  } finally {
+    transactionDialog.value = false
+    $q.loading.hide()
+  }
+}
+
+const currentValue = id => {
+  if (allCryptos.value && allCryptos.value.length > 0) {
+    return allCryptos.value.find(c => c.id === id).price * currency.value.value.toFixed(2)
+  }
+  return 0
+}
+
+const totalInvest = computed(() => {
+  return transactions.value.reduce((acc, curr) => {
+    return acc + (curr.price * curr.quantity)
+  }, 0).toFixed(2)
+})
+
+const totalActual = computed(() => {
+  return transactions.value.reduce((acc, curr) => {
+    console.log(curr)
+    return acc + (currentValue(curr.cryptos.$id) * curr.quantity)
+  }, 0).toFixed(2)
+})
+
+const totalProfit = computed(() => {
+  return ((totalActual.value - totalInvest.value) / totalInvest.value * 100).toFixed(2)
+})
+
+const openTransactionsHistory = crypto => {
+  transcationHistoryDialog.value = true
+  transactionHistory.value = crypto
+}
+
+const transactionHistoryList = id => {
+  return transactions.value.filter(t => t.cryptos?.$id === id).map(i => {
+    return {
+      id: i.cryptos.$id,
+      transactionId: i.$id,
+      name: i.cryptos.name,
+      quantity: i.quantity,
+      price: `${i.price * currency.value.value} ${currency.value.label}`,
+      totalPrice: `${(i.price * i.quantity) * currency.value.value} ${currency.value.label}`
+    }
+  })
+}
+
+const deleteTransactionHistory = async item => {
+  try {
+    $q.loading.show()
+    await DB.deleteDocument(
+      '66058142ae7ac2bc3864',
+      '660fb13c51fb6f87af02',
+      item.transactionId
+    )
+  } catch (e) {
+    console.error(e)
+  } finally {
+    $q.loading.hide()
+  }
+}
+
+const transactionsHistoryCols = [
+  {
+    name: 'id',
+    field: 'id',
+    label: 'ID',
+    align: 'left',
+    sortable: true
+  },
+  {
+    name: 'name',
+    field: 'name',
+    label: 'Nom',
+    align: 'left',
+    sortable: true
+  },
+  {
+    name: 'quantity',
+    field: 'quantity',
+    label: 'Quantité',
+    align: 'right',
+    sortable: true
+  },
+  {
+    name: 'price',
+    field: 'price',
+    label: 'Prix moyen d`\'achat',
+    align: 'right',
+    sortable: true
+  },
+  {
+    name: 'totalPrice',
+    field: 'totalPrice',
+    label: 'Total',
+    align: 'right',
+    sortable: true
+  },
+  { name: 'actions', label: 'Supprimer', field: '', align: 'center' },
+]
 
 watch(currency, val => {
   $q.localStorage.set('currency', val)
@@ -488,8 +678,25 @@ watch(cryptoTab, val => {
 })
 
 watch(transactionTab, val => {
-  newTransaction.value.transaction = val
+  newTransaction.value.type = val
 }, { immediate: true })
+
+watch(newTransaction.value, val => {
+  if (val.quantity && val.coinPrice && val.type === 'buy') {
+    newTransaction.value.totalSpent = +val.quantity * +val.coinPrice
+    return
+  }
+  newTransaction.value.totalSpent = ''
+}, { immediate: true })
+
+watch(newTransaction.value, val => {
+  if (val.quantity && val.coinPrice && val.type === 'sell') {
+    newTransaction.value.totalReceived = +val.quantity * +val.coinPrice
+    return
+  }
+  newTransaction.value.totalReceived = ''
+}, { immediate: true })
+
 
 
 </script>
